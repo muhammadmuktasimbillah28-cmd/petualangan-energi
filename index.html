@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Petualangan Energi 3D - Game Edukasi SD</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Tone.js untuk efek suara ceria tanpa file eksternal -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Fonts: Fredoka & Nunito untuk nuansa game anak-anak yang ceria -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome untuk ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Nunito', sans-serif;
+            background-color: #38bdf8;
+        }
+        h1, h2, h3, .font-game {
+            font-family: 'Fredoka', sans-serif;
+        }
+        #game-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            display: block;
+        }
+        /* Gaya Tombol 3D ala Roblox */
+        .btn-3d {
+            transition: all 0.1s ease;
+            box-shadow: 0 5px 0 rgba(0, 0, 0, 0.25);
+        }
+        .btn-3d:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+        }
+        /* Analog Joystick */
+        #joystick-zone {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            background: rgba(255, 255, 255, 0.25);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            backdrop-filter: blur(4px);
+            touch-action: none;
+        }
+        #joystick-knob {
+            position: absolute;
+            width: 54px;
+            height: 54px;
+            background: radial-gradient(circle at 30% 30%, #ffffff, #cbd5e1);
+            border: 3px solid #3b82f6;
+            border-radius: 50%;
+            top: 35px;
+            left: 35px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+        /* Custom Scrollbar untuk modal */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        @keyframes floatAnim {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: floatAnim 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas 3D Utama -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Notifikasi Toast (Pengganti alert) -->
+    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-md pointer-events-none"></div>
+
+    <!-- ================= 1. LAYAR REGISTRASI PEMAIN ================= -->
+    <div id="screen-register" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-gradient-to-b from-sky-400/80 via-blue-500/70 to-emerald-500/80 backdrop-blur-sm overflow-y-auto">
+        <!-- Tombol Pojok Kanan Atas: Peringkat & Admin -->
+        <div class="fixed top-4 right-4 flex gap-2 z-40">
+            <button onclick="openLeaderboard()" class="btn-3d bg-amber-400 hover:bg-amber-300 text-amber-950 font-game font-bold px-4 py-2.5 rounded-2xl border-2 border-amber-200 flex items-center gap-2 text-sm sm:text-base shadow-lg">
+                <i class="fas fa-trophy text-amber-700"></i> Peringkat
+            </button>
+            <button onclick="openAdminLogin()" class="btn-3d bg-slate-800 hover:bg-slate-700 text-white font-game font-bold px-4 py-2.5 rounded-2xl border-2 border-slate-600 flex items-center gap-2 text-sm sm:text-base shadow-lg">
+                <i class="fas fa-user-shield text-sky-400"></i> Admin
+            </button>
+        </div>
+
+        <!-- Kartu Registrasi -->
+        <div class="bg-white/95 border-4 border-white rounded-3xl shadow-2xl w-full max-w-md p-6 sm:p-8 mt-12 sm:mt-0 relative">
+            <div class="text-center mb-6">
+                <div class="inline-block bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 shadow">
+                    Petualangan Sains SD 3D
+                </div>
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight">
+                    OBBY ENERGI <span class="text-blue-600">3D</span>
+                </h1>
+                <p class="text-slate-500 text-sm mt-1 font-semibold">Taklukkan 5 rintangan & jawab pertanyaannya!</p>
+            </div>
+
+            <!-- Form Registrasi -->
+            <div class="space-y-5">
+                <!-- Input Nama -->
+                <div>
+                    <label for="player-name" class="block text-slate-700 font-bold mb-1.5 text-sm sm:text-base">
+                        <i class="fas fa-id-badge text-blue-500 mr-1"></i> Nama Lengkap Siswa
+                    </label>
+                    <input type="text" id="player-name" placeholder="Ketik namamu di sini..." autocomplete="off"
+                        class="w-full px-4 py-3.5 rounded-2xl border-3 border-slate-200 focus:border-blue-500 focus:outline-none text-slate-800 font-bold text-base bg-slate-50 transition">
+                </div>
+
+                <!-- Pilihan Jenis Kelamin -->
+                <div>
+                    <label class="block text-slate-700 font-bold mb-2 text-sm sm:text-base">
+                        <i class="fas fa-child text-emerald-500 mr-1"></i> Pilih Karakter / Jenis Kelamin
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- Radio Laki-laki -->
+                        <label class="cursor-pointer">
+                            <input type="radio" name="gender" value="Laki-laki" class="peer hidden" onchange="selectGenderPreview('Laki-laki')">
+                            <div class="peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:ring-4 peer-checked:ring-blue-200 border-2 border-slate-200 rounded-2xl p-3 text-center transition hover:bg-slate-50 flex flex-col items-center">
+                                <!-- Avatar SVG Laki-laki -->
+                                <div class="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-2 shadow-inner">
+                                    <svg viewBox="0 0 64 64" class="w-14 h-14">
+                                        <rect x="16" y="14" width="32" height="28" rx="6" fill="#FDBA74"/>
+                                        <path d="M14 18 Q32 4 50 18 L50 22 L14 22 Z" fill="#1E293B"/>
+                                        <rect x="14" y="10" width="36" height="8" rx="3" fill="#2563EB"/>
+                                        <rect x="38" y="14" width="16" height="4" rx="2" fill="#1D4ED8"/>
+                                        <circle cx="25" cy="27" r="2.5" fill="#0F172A"/>
+                                        <circle cx="39" cy="27" r="2.5" fill="#0F172A"/>
+                                        <path d="M27 34 Q32 38 37 34" stroke="#0F172A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                                        <rect x="14" y="44" width="36" height="18" rx="5" fill="#2563EB"/>
+                                    </svg>
+                                </div>
+                                <span class="font-game font-bold text-slate-800">Laki-laki</span>
+                            </div>
+                        </label>
+
+                        <!-- Radio Perempuan -->
+                        <label class="cursor-pointer">
+                            <input type="radio" name="gender" value="Perempuan" class="peer hidden" onchange="selectGenderPreview('Perempuan')">
+                            <div class="peer-checked:border-pink-500 peer-checked:bg-pink-50 peer-checked:ring-4 peer-checked:ring-pink-200 border-2 border-slate-200 rounded-2xl p-3 text-center transition hover:bg-slate-50 flex flex-col items-center">
+                                <!-- Avatar SVG Perempuan -->
+                                <div class="w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center mb-2 shadow-inner">
+                                    <svg viewBox="0 0 64 64" class="w-14 h-14">
+                                        <circle cx="13" cy="24" r="6" fill="#78350F"/>
+                                        <circle cx="51" cy="24" r="6" fill="#78350F"/>
+                                        <rect x="16" y="14" width="32" height="28" rx="6" fill="#FED7AA"/>
+                                        <path d="M15 20 Q32 8 49 20 L49 14 Q32 6 15 14 Z" fill="#78350F"/>
+                                        <circle cx="46" cy="15" r="4" fill="#EC4899"/>
+                                        <circle cx="25" cy="27" r="2.5" fill="#0F172A"/>
+                                        <circle cx="39" cy="27" r="2.5" fill="#0F172A"/>
+                                        <path d="M27 34 Q32 38 37 34" stroke="#0F172A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                                        <rect x="14" y="44" width="36" height="18" rx="5" fill="#EC4899"/>
+                                    </svg>
+                                </div>
+                                <span class="font-game font-bold text-slate-800">Perempuan</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Pesan Error Validasi -->
+                <div id="register-error" class="hidden bg-red-100 border-2 border-red-400 text-red-700 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle text-red-500"></i>
+                    <span id="register-error-text">Nama dan jenis kelamin wajib diisi!</span>
+                </div>
+
+                <!-- Tombol Mulai Game -->
+                <button id="btn-start-game" onclick="handleStartGame()" class="btn-3d w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-game font-bold text-xl py-4 rounded-2xl border-2 border-emerald-300 flex items-center justify-center gap-3 shadow-xl">
+                    <i class="fas fa-play"></i> MULAI GAME
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 2. HUD UTAMA SAAT BERMAIN ================= -->
+    <div id="hud-game" class="hidden fixed inset-0 z-20 pointer-events-none">
+        <!-- Bar Atas: Info Pemain, Skor, Waktu, Progres -->
+        <div class="p-3 sm:p-4 flex flex-wrap items-center justify-between gap-2">
+            <!-- Kartu Profil Pemain -->
+            <div class="bg-white/90 backdrop-blur-md border-2 border-white rounded-2xl px-3 py-2 shadow-lg flex items-center gap-3 pointer-events-auto">
+                <div id="hud-avatar" class="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0"></div>
+                <div>
+                    <div id="hud-player-name" class="font-game font-bold text-slate-800 text-sm sm:text-base leading-tight truncate max-w-[130px] sm:max-w-[180px]">Siswa</div>
+                    <div id="hud-player-gender" class="text-xs font-bold text-slate-500">Petualang</div>
+                </div>
+            </div>
+
+            <!-- Statistik Tengah/Kanan: Skor, Timer, Rintangan -->
+            <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+                <!-- Progres Rintangan -->
+                <div class="bg-indigo-600/95 text-white border-2 border-indigo-300 rounded-2xl px-3 py-2 shadow-lg text-center">
+                    <div class="text-[10px] uppercase font-bold text-indigo-200">Rintangan</div>
+                    <div class="font-game font-bold text-sm sm:text-lg leading-none"><span id="hud-stage">0</span>/5</div>
+                </div>
+                <!-- Skor -->
+                <div class="bg-amber-400/95 text-amber-950 border-2 border-amber-200 rounded-2xl px-3 py-2 shadow-lg text-center">
+                    <div class="text-[10px] uppercase font-bold text-amber-800">Skor</div>
+                    <div id="hud-score" class="font-game font-bold text-sm sm:text-lg leading-none">0</div>
+                </div>
+                <!-- Waktu -->
+                <div class="bg-slate-800/90 text-white border-2 border-slate-600 rounded-2xl px-3 py-2 shadow-lg text-center">
+                    <div class="text-[10px] uppercase font-bold text-slate-400">Waktu</div>
+                    <div id="hud-timer" class="font-game font-bold text-sm sm:text-lg leading-none">00:00</div>
+                </div>
+                <!-- Tombol Kamera / Reset Posisi -->
+                <button onclick="resetPlayerToSafeSpot()" title="Posisi Ulang Karakter" class="btn-3d bg-white/90 hover:bg-white text-slate-700 w-10 h-10 rounded-xl border-2 border-slate-200 flex items-center justify-center shadow">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Petunjuk Singkat di Layar -->
+        <div id="hud-hint" class="mx-auto w-fit bg-slate-900/75 text-white text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full backdrop-blur-sm border border-white/20 text-center">
+            Gunakan Analog / Tombol Panah untuk maju menuju rintangan!
+        </div>
+
+        <!-- Kontrol Touch (Analog Kiri + Tombol Lari & Lompat Kanan) -->
+        <div class="fixed bottom-5 left-5 right-5 flex items-end justify-between pointer-events-none">
+            <!-- Analog Joystick -->
+            <div id="joystick-zone" class="pointer-events-auto shadow-xl">
+                <div id="joystick-knob"></div>
+            </div>
+
+            <!-- Tombol Aksi Kanan: Lari & Lompat -->
+            <div class="flex items-end gap-3 sm:gap-4 pointer-events-auto">
+                <!-- Tombol Lari (Sprint) -->
+                <button id="btn-sprint"
+                    onpointerdown="setSprint(true)" onpointerup="setSprint(false)" onpointerleave="setSprint(false)"
+                    class="btn-3d w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-b from-amber-400 to-orange-500 border-4 border-white text-white font-game font-bold flex flex-col items-center justify-center shadow-xl active:scale-95">
+                    <i class="fas fa-bolt text-xl sm:text-2xl"></i>
+                    <span class="text-[11px] sm:text-xs">LARI</span>
+                </button>
+
+                <!-- Tombol Lompat (Jump) -->
+                <button id="btn-jump"
+                    onpointerdown="triggerJump()"
+                    class="btn-3d w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-b from-emerald-400 to-green-600 border-4 border-white text-white font-game font-bold flex flex-col items-center justify-center shadow-xl active:scale-95">
+                    <i class="fas fa-arrow-up text-2xl sm:text-3xl"></i>
+                    <span class="text-xs sm:text-sm">LOMPAT</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 3. MODAL PERTANYAAN RINTANGAN ================= -->
+    <div id="modal-quiz" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm">
+        <div class="bg-white border-4 border-blue-400 rounded-3xl shadow-2xl w-full max-w-lg p-6 relative overflow-hidden">
+            <!-- Header Rintangan -->
+            <div class="flex items-center gap-3 mb-4 pb-3 border-b-2 border-slate-100">
+                <div id="quiz-obstacle-icon" class="w-14 h-14 rounded-2xl bg-amber-100 text-3xl flex items-center justify-center shrink-0 border-2 border-amber-300">
+                    🕳️
+                </div>
+                <div>
+                    <span id="quiz-badge" class="bg-blue-100 text-blue-700 text-xs font-extrabold px-2.5 py-0.5 rounded-full uppercase">Rintangan 1 dari 5</span>
+                    <h2 id="quiz-obstacle-title" class="text-xl sm:text-2xl font-game font-bold text-slate-800">Lubang Jalan</h2>
+                </div>
+            </div>
+
+            <!-- Pertanyaan -->
+            <div class="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4 mb-5">
+                <p id="quiz-question-text" class="text-slate-800 font-bold text-base sm:text-lg leading-snug">
+                    Pertanyaan akan muncul di sini...
+                </p>
+            </div>
+
+            <!-- Pilihan Jawaban -->
+            <div id="quiz-options" class="space-y-2.5">
+                <!-- Diisi via JS -->
+            </div>
+
+            <!-- Overlay Konfirmasi Jawaban ("Apakah kamu sudah yakin dengan jawabanmu") -->
+            <div id="quiz-confirm-box" class="hidden absolute inset-0 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
+                <div class="w-16 h-16 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center text-3xl mb-3 animate-bounce">
+                    <i class="fas fa-question-circle"></i>
+                </div>
+                <h3 class="text-xl sm:text-2xl font-game font-bold text-slate-800 mb-2">
+                    Apakah kamu sudah yakin dengan jawabanmu?
+                </h3>
+                <p class="text-slate-600 text-sm font-semibold mb-1">Pilihanmu:</p>
+                <div id="confirm-selected-answer" class="bg-blue-100 text-blue-800 font-bold px-4 py-2 rounded-xl mb-4 border border-blue-300">
+                    A. Cepat
+                </div>
+                <p class="text-xs text-rose-600 font-bold mb-5">
+                    <i class="fas fa-lock mr-1"></i> Jawaban yang sudah dipilih tidak bisa diulangi!
+                </p>
+                <div class="flex gap-3 w-full max-w-xs">
+                    <button onclick="cancelAnswerConfirm()" class="btn-3d flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-game font-bold py-3 rounded-xl">
+                        Cek Lagi
+                    </button>
+                    <button onclick="submitFinalAnswer()" class="btn-3d flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-game font-bold py-3 rounded-xl">
+                        Ya, Yakin!
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 4. MODAL SELESAI & APRESIASI ================= -->
+    <div id="modal-finish" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
+        <div class="bg-white border-4 border-amber-400 rounded-3xl shadow-2xl w-full max-w-lg p-6 sm:p-8 text-center relative">
+            <div class="text-5xl sm:text-6xl mb-2 animate-float">🏆🎉</div>
+            <h2 class="text-2xl sm:text-3xl font-game font-extrabold text-slate-800">
+                SELAMAT, PETUALANG HEBAT!
+            </h2>
+            <p id="finish-appreciation-msg" class="text-slate-600 font-bold text-sm sm:text-base mt-2">
+                Luar biasa! Kamu berhasil menyelesaikan seluruh petualangan energi!
+            </p>
+
+            <!-- Rincian Skor & Waktu -->
+            <div class="grid grid-cols-2 gap-3 my-5">
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-3">
+                    <div class="text-xs font-bold text-amber-700 uppercase">Skor Ketepatan</div>
+                    <div id="finish-score" class="text-3xl font-game font-extrabold text-amber-600">100</div>
+                    <div id="finish-correct-count" class="text-xs font-bold text-slate-500">5/5 Jawaban Benar</div>
+                </div>
+                <div class="bg-blue-50 border-2 border-blue-300 rounded-2xl p-3">
+                    <div class="text-xs font-bold text-blue-700 uppercase">Waktu Selesai</div>
+                    <div id="finish-time" class="text-3xl font-game font-extrabold text-blue-600">01:15</div>
+                    <div class="text-xs font-bold text-slate-500">Kecepatan Petualangan</div>
+                </div>
+            </div>
+
+            <!-- Status Penyimpanan -->
+            <div id="save-status-badge" class="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-full inline-flex items-center gap-1.5 mb-5">
+                <i class="fas fa-check-circle"></i> Hasil berhasil disimpan ke Papan Peringkat!
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button onclick="openLeaderboard()" class="btn-3d flex-1 bg-amber-400 hover:bg-amber-300 text-amber-950 font-game font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2">
+                    <i class="fas fa-trophy"></i> Lihat Peringkat
+                </button>
+                <button onclick="exitToMainMenu()" class="btn-3d flex-1 bg-blue-600 hover:bg-blue-500 text-white font-game font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i> Keluar ke Awal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 5. MODAL PAPAN PERINGKAT (LEADERBOARD) ================= -->
+    <div id="modal-leaderboard" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <div class="bg-white border-4 border-amber-400 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-amber-400 to-orange-400 p-4 sm:p-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-white/90 text-amber-600 flex items-center justify-center text-2xl shadow">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-game font-extrabold text-amber-950">Papan Peringkat Siswa</h2>
+                        <p class="text-xs font-bold text-amber-900">Berdasarkan Ketepatan Jawaban & Kecepatan Waktu</p>
+                    </div>
+                </div>
+                <button onclick="closeLeaderboard()" class="w-10 h-10 rounded-xl bg-white/80 hover:bg-white text-slate-800 font-bold flex items-center justify-center">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Banner Info jika pemain sudah pernah bermain -->
+            <div id="already-played-banner" class="hidden bg-blue-50 border-b-2 border-blue-200 px-5 py-3 flex items-center gap-3">
+                <i class="fas fa-info-circle text-blue-600 text-xl"></i>
+                <div class="text-xs sm:text-sm font-bold text-blue-900">
+                    Nama <span id="already-played-name" class="underline"></span> sudah pernah bermain! Kamu tidak dapat bermain ulang, berikut adalah hasil peringkatmu.
+                </div>
+            </div>
+
+            <!-- Tabel Peringkat -->
+            <div class="p-4 overflow-y-auto flex-1">
+                <div id="leaderboard-loading" class="hidden text-center py-8 text-slate-500 font-bold">
+                    <i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i><br>Memuat data dari Spreadsheet...
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-slate-200 text-slate-500 text-xs uppercase">
+                                <th class="py-2.5 px-2 text-center">Rank</th>
+                                <th class="py-2.5 px-3">Nama Siswa</th>
+                                <th class="py-2.5 px-2 text-center">Skor</th>
+                                <th class="py-2.5 px-2 text-center">Waktu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body" class="divide-y divide-slate-100 text-sm font-bold text-slate-700">
+                            <!-- Diisi via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="leaderboard-empty" class="hidden text-center py-10 text-slate-400 font-bold">
+                    Belum ada siswa yang menyelesaikan petualangan. Jadilah yang pertama!
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                <button onclick="syncFromSpreadsheet()" class="text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1.5">
+                    <i class="fas fa-sync-alt"></i> Segarkan Data
+                </button>
+                <button onclick="closeLeaderboard()" class="btn-3d bg-slate-800 text-white font-game font-bold px-6 py-2.5 rounded-xl text-sm">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 6. MODAL LOGIN & PANEL ADMIN GURU ================= -->
+    <div id="modal-admin" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/85 backdrop-blur-sm">
+        <!-- Form Login Admin -->
+        <div id="admin-login-view" class="bg-white border-4 border-slate-700 rounded-3xl shadow-2xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-game font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-user-shield text-blue-600"></i> Login Admin Guru
+                </h2>
+                <button onclick="closeAdminModal()" class="text-slate-400 hover:text-slate-700 text-xl"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="text-xs text-slate-500 font-semibold mb-4">Masuk untuk mengelola peringkat siswa, menghapus pemain asing, dan mengatur koneksi Google Spreadsheet.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Username Admin</label>
+                    <input type="text" id="admin-username" placeholder="Masukkan username..." class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-800 focus:border-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
+                    <input type="password" id="admin-password" placeholder="Masukkan password..." class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-800 focus:border-blue-500 focus:outline-none">
+                </div>
+                <div id="admin-login-error" class="hidden text-xs font-bold text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
+                    Username atau password salah!
+                </div>
+                <button onclick="handleAdminLogin()" class="btn-3d w-full bg-slate-800 hover:bg-slate-700 text-white font-game font-bold py-3.5 rounded-xl">
+                    Masuk Panel Admin
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Admin (Setelah Login Berhasil) -->
+        <div id="admin-dashboard-view" class="hidden bg-white border-4 border-slate-700 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+            <!-- Header Dashboard -->
+            <div class="bg-slate-800 text-white p-4 sm:p-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-chalkboard-teacher text-2xl text-emerald-400"></i>
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-game font-bold">Panel Kontrol Guru & Database Spreadsheet</h2>
+                        <p class="text-xs text-slate-300">Kelola hasil siswa & bersihkan peserta asing</p>
+                    </div>
+                </div>
+                <button onclick="closeAdminModal()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-xl text-sm font-bold">
+                    Keluar Admin
+                </button>
+            </div>
+
+            <!-- Konten Dashboard -->
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
+                <!-- Bagian 1: Konfigurasi Google Spreadsheet -->
+                <div class="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <h3 class="font-game font-bold text-emerald-900 flex items-center gap-2">
+                            <i class="fas fa-file-excel text-emerald-600"></i> Koneksi Google Spreadsheet
+                        </h3>
+                        <button onclick="toggleScriptGuide()" class="text-xs font-bold bg-emerald-600 text-white px-3 py-1 rounded-lg hover:bg-emerald-700">
+                            <i class="fas fa-code mr-1"></i> Cara Hubungkan ke Google Sheets
+                        </button>
+                    </div>
+                    <p class="text-xs text-emerald-800 mb-3">
+                        Tempelkan URL Web App dari <b>Google Apps Script</b> di bawah ini agar data siswa otomatis tersimpan & terbaca dari Google Spreadsheet Anda.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="spreadsheet-url-input" placeholder="https://script.google.com/macros/s/.../exec"
+                            class="flex-1 px-3 py-2 rounded-xl border-2 border-emerald-300 text-xs sm:text-sm font-semibold text-slate-800 bg-white">
+                        <button onclick="saveSpreadsheetUrl()" class="btn-3d bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shrink-0">
+                            Simpan URL
+                        </button>
+                    </div>
+
+                    <!-- Panduan & Kode Apps Script (Tersembunyi secara default) -->
+                    <div id="apps-script-guide" class="hidden mt-4 pt-3 border-t border-emerald-200 text-xs text-slate-700 space-y-2">
+                        <p class="font-bold text-emerald-900">Langkah Mudah Menghubungkan ke Google Spreadsheet:</p>
+                        <ol class="list-decimal ml-4 space-y-1">
+                            <li>Buka <a href="https://sheets.new" target="_blank" class="text-blue-600 underline font-bold">sheets.new</a> untuk membuat Spreadsheet baru.</li>
+                            <li>Klik menu <b>Ekstensi (Extensions) &gt; Apps Script</b>.</li>
+                            <li>Hapus kode yang ada, lalu tempel kode di bawah ini dan klik <b>Simpan (Save)</b>.</li>
+                            <li>Klik <b>Terapkan (Deploy) &gt; Deployment baru (New deployment)</b> &gt; Pilih jenis <b>Aplikasi Web (Web app)</b>.</li>
+                            <li>Pada "Yang memiliki akses (Who has access)", pilih <b>Siapa saja (Anyone)</b>, lalu klik <b>Terapkan</b> & salin URL Web App-nya ke kotak di atas.</li>
+                        </ol>
+                        <div class="relative">
+                            <pre id="apps-script-code" class="bg-slate-900 text-emerald-300 p-3 rounded-xl overflow-x-auto text-[11px] font-mono">function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var action = e.parameter.action;
+  if (action == "delete") {
+    var nameToDelete = e.parameter.name;
+    var data = sheet.getDataRange().getValues();
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (data[i][0].toString().toLowerCase() == nameToDelete.toLowerCase()) {
+        sheet.deleteRow(i + 1);
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({status: "deleted"})).setMimeType(ContentService.MimeType.JSON);
+  }
+  var rows = sheet.getDataRange().getValues();
+  var result = [];
+  for (var i = 1; i < rows.length; i++) {
+    result.push({ name: rows[i][0], gender: rows[i][1], score: Number(rows[i][2]), timeSeconds: Number(rows[i][3]), date: rows[i][4] });
+  }
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["Nama", "Jenis Kelamin", "Skor", "Waktu (Detik)", "Tanggal"]);
+  }
+  var data = JSON.parse(e.postData.contents);
+  sheet.appendRow([data.name, data.gender, data.score, data.timeSeconds, data.date]);
+  return ContentService.createTextOutput(JSON.stringify({status: "success"})).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+                            <button onclick="copyAppsScript()" class="mt-2 bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-slate-700">
+                                <i class="fas fa-copy mr-1"></i> Salin Kode Apps Script
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bagian 2: Daftar Pemain & Aksi Hapus -->
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h3 class="font-game font-bold text-slate-800 text-lg">
+                            Daftar Peserta Terdaftar (<span id="admin-total-players">0</span>)
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="exportToCSV()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5">
+                                <i class="fas fa-file-csv"></i> Unduh Excel / CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border-2 border-slate-200 rounded-2xl">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+                                <tr>
+                                    <th class="py-3 px-3">Rank</th>
+                                    <th class="py-3 px-3">Nama Siswa</th>
+                                    <th class="py-3 px-3">Gender</th>
+                                    <th class="py-3 px-3 text-center">Skor</th>
+                                    <th class="py-3 px-3 text-center">Waktu</th>
+                                    <th class="py-3 px-3 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-players-body" class="divide-y divide-slate-200 text-sm font-bold text-slate-700">
+                                <!-- Diisi via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus Pemain (Pengganti confirm) -->
+    <div id="modal-delete-confirm" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center border-4 border-rose-400 shadow-2xl">
+            <div class="w-14 h-14 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-2xl mx-auto mb-3">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <h3 class="font-game font-bold text-xl text-slate-800 mb-1">Hapus Data Pemain?</h3>
+            <p class="text-sm text-slate-600 mb-5">
+                Yakin ingin menghapus <b id="delete-target-name" class="text-rose-600"></b> dari daftar peringkat? Pemain tersebut akan bisa mendaftar ulang.
+            </p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteConfirm()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2.5 rounded-xl">Batal</button>
+                <button onclick="executeDeletePlayer()" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================================================
+           1. KONFIGURASI DATA PERTANYAAN & RINTANGAN SESUAI PERMINTAAN GURU
+           ========================================================================= */
+        const OBSTACLES_DATA = [
+            {
+                id: 1,
+                type: "hole",
+                name: "Lubang Jalan",
+                icon: "🕳️",
+                zPos: -28,
+                question: "Kincir angin berputar semakin…. Jika angin bertiup kencang",
+                options: [
+                    { label: "A", text: "Lambat" },
+                    { label: "B", text: "Cepat" },
+                    { label: "C", text: "Diam" },
+                    { label: "D", text: "Berat" }
+                ],
+                correctIndex: 1 // B. Cepat
+            },
+            {
+                id: 2,
+                type: "rock",
+                name: "Batu Penghalang",
+                icon: "🪨",
+                zPos: -56,
+                question: "Kincir air digerakkan oleh….",
+                options: [
+                    { label: "A", text: "Api" },
+                    { label: "B", text: "Tanah" },
+                    { label: "C", text: "Aliran air" },
+                    { label: "D", text: "Batu" }
+                ],
+                correctIndex: 2 // C. Aliran air
+            },
+            {
+                id: 3,
+                type: "bakso",
+                name: "Penjual Bakso",
+                icon: "🍜",
+                zPos: -84,
+                question: "Lampu menghasilkan energi….",
+                options: [
+                    { label: "A", text: "Cahaya" },
+                    { label: "B", text: "Bunyi" },
+                    { label: "C", text: "Gerak" },
+                    { label: "D", text: "Kimia" }
+                ],
+                correctIndex: 0 // A. Cahaya
+            },
+            {
+                id: 4,
+                type: "ghost",
+                name: "Hantu Penjaga",
+                icon: "👻",
+                zPos: -112,
+                question: "Jika kedua telapak tangan kita bergesekan maka timbul rasa…. Hal ini dapat mengurangi rasa dingin",
+                options: [
+                    { label: "A", text: "Dingin" },
+                    { label: "B", text: "Basah" },
+                    { label: "C", text: "Panas" },
+                    { label: "D", text: "Sakit" }
+                ],
+                correctIndex: 2 // C. Panas
+            },
+            {
+                id: 5,
+                type: "monster",
+                name: "Monster Raksasa",
+                icon: "👹",
+                zPos: -140,
+                question: "Apakah sumber energi yang dibutuhkan manusia untuk bertahan hidup?",
+                options: [
+                    { label: "A", text: "Bensin dan solar" },
+                    { label: "B", text: "Makanan dan minuman" },
+                    { label: "C", text: "Listrik dan baterai" },
+                    { label: "D", text: "Batu bara" }
+                ],
+                correctIndex: 1 // B. Makanan dan minuman
+            }
+        ];
+        const FINISH_Z = -164;
+
+        /* =========================================================================
+           2. STATE PERMAINAN & DATABASE (SPREADSHEET + LOCALSTORAGE)
+           ========================================================================= */
+        const STORAGE_KEY_RECORDS = "obby_energi_sd_records_v1";
+        const STORAGE_KEY_SHEET_URL = "obby_energi_sd_sheet_url_v1";
+
+        let gameState = {
+            status: "REGISTER", // REGISTER, PLAYING, QUIZ, FINISHED
+            playerName: "",
+            playerGender: "",
+            score: 0,
+            correctCount: 0,
+            startTime: 0,
+            elapsedSeconds: 0,
+            currentObstacleIndex: 0,
+            clearedObstacles: [false, false, false, false, false],
+            selectedOptionIndex: null,
+            pendingDeleteName: null
+        };
+
+        // Efek suara sintetis ringan menggunakan Tone.js
+        let synth = null;
+        function playSound(type) {
+            try {
+                if (!synth && typeof Tone !== "undefined") {
+                    synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    synth.volume.value = -8;
+                }
+                if (!synth) return;
+                if (Tone.context.state !== "running") Tone.start();
+
+                if (type === "jump") {
+                    synth.triggerAttackRelease(["C4", "G4"], "16n");
+                } else if (type === "correct") {
+                    synth.triggerAttackRelease(["C5", "E5", "G5", "C6"], "8n");
+                } else if (type === "wrong") {
+                    synth.triggerAttackRelease(["E3", "Eb3"], "4n");
+                } else if (type === "win") {
+                    synth.triggerAttackRelease(["C5", "E5", "G5", "B5", "C6"], "4n");
+                } else if (type === "popup") {
+                    synth.triggerAttackRelease(["A4", "D5"], "16n");
+                }
+            } catch (e) {
+                // Abaikan jika audio diblokir browser
+            }
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            const colors = {
+                info: "bg-slate-800 text-white border-slate-600",
+                success: "bg-emerald-600 text-white border-emerald-300",
+                error: "bg-rose-600 text-white border-rose-300",
+                warning: "bg-amber-500 text-amber-950 border-amber-200"
+            };
+            toast.className = `${colors[type] || colors.info} border-2 px-4 py-3 rounded-2xl shadow-xl font-bold text-sm text-center transition-all duration-300 transform translate-y-0`;
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                toast.style.transform = "translateY(-10px)";
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Fungsi Manajemen Data Pemain (LocalStorage + Google Spreadsheet Webhook)
+        function getLocalRecords() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY_RECORDS);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveLocalRecords(records) {
+            localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(records));
+        }
+
+        function getSortedLeaderboard(records) {
+            // Urutkan berdasarkan: 1) Skor tertinggi (ketepatan), 2) Waktu tercepat (kecepatan)
+            return [...records].sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                return a.timeSeconds - b.timeSeconds;
+            });
+        }
+
+        async function syncFromSpreadsheet() {
+            const sheetUrl = localStorage.getItem(STORAGE_KEY_SHEET_URL);
+            if (!sheetUrl) return getLocalRecords();
+
+            const loadingEl = document.getElementById("leaderboard-loading");
+            if (loadingEl) loadingEl.classList.remove("hidden");
+
+            try {
+                const response = await fetch(sheetUrl);
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    saveLocalRecords(data);
+                    renderLeaderboardTable();
+                    if (document.getElementById("admin-dashboard-view") && !document.getElementById("admin-dashboard-view").classList.contains("hidden")) {
+                        renderAdminTable();
+                    }
+                    return data;
+                }
+            } catch (err) {
+                console.warn("Gagal sinkronisasi dari Spreadsheet, menggunakan data lokal:", err);
+            } finally {
+                if (loadingEl) loadingEl.classList.add("hidden");
+            }
+            return getLocalRecords();
+        }
+
+        async function savePlayerResultToDatabase(record) {
+            // 1. Simpan ke LocalStorage terlebih dahulu agar instan
+            const records = getLocalRecords();
+            // Hindari duplikasi nama
+            const filtered = records.filter(r => r.name.trim().toLowerCase() !== record.name.trim().toLowerCase());
+            filtered.push(record);
+            saveLocalRecords(filtered);
+
+            // 2. Kirim ke Google Spreadsheet jika URL sudah dikonfigurasi oleh Guru
+            const sheetUrl = localStorage.getItem(STORAGE_KEY_SHEET_URL);
+            if (sheetUrl) {
+                try {
+                    await fetch(sheetUrl, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(record)
+                    });
+                } catch (err) {
+                    console.warn("Gagal mengirim ke Spreadsheet:", err);
+                }
+            }
+        }
+
+        /* =========================================================================
+           3. REGISTRASI PEMAIN & VALIDASI ANTI-MAIN ULANG
+           ========================================================================= */
+        function selectGenderPreview(gender) {
+            if (playerMeshGroup) {
+                buildRobloxCharacter(gender);
+            }
+        }
+
+        async function handleStartGame() {
+            const nameInput = document.getElementById("player-name").value.trim();
+            const genderRadio = document.querySelector('input[name="gender"]:checked');
+            const errorBox = document.getElementById("register-error");
+            const errorText = document.getElementById("register-error-text");
+
+            // Validasi Nama & Jenis Kelamin
+            if (!nameInput) {
+                errorText.innerText = "Nama Pemain wajib diisi dan tidak boleh kosong!";
+                errorBox.classList.remove("hidden");
+                playSound("wrong");
+                return;
+            }
+            if (!genderRadio) {
+                errorText.innerText = "Silakan pilih Jenis Kelamin (Laki-laki atau Perempuan)!";
+                errorBox.classList.remove("hidden");
+                playSound("wrong");
+                return;
+            }
+            errorBox.classList.add("hidden");
+
+            // Sinkronisasi data terbaru jika ada Spreadsheet
+            const btnStart = document.getElementById("btn-start-game");
+            btnStart.disabled = true;
+            btnStart.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMERIKSA DATA...';
+
+            const records = await syncFromSpreadsheet();
+
+            btnStart.disabled = false;
+            btnStart.innerHTML = '<i class="fas fa-play"></i> MULAI GAME';
+
+            // Cek apakah pemain sudah pernah bermain / terdaftar
+            const existingPlayer = records.find(
+                r => r.name.trim().toLowerCase() === nameInput.toLowerCase()
+            );
+
+            if (existingPlayer) {
+                // Pemain sudah pernah bermain -> Tolak bermain ulang & tampilkan Peringkat
+                playSound("wrong");
+                document.getElementById("already-played-name").innerText = existingPlayer.name;
+                document.getElementById("already-played-banner").classList.remove("hidden");
+                openLeaderboard(existingPlayer.name);
+                return;
+            }
+
+            // Mulai Permainan Baru
+            gameState.playerName = nameInput;
+            gameState.playerGender = genderRadio.value;
+            gameState.score = 0;
+            gameState.correctCount = 0;
+            gameState.elapsedSeconds = 0;
+            gameState.startTime = Date.now();
+            gameState.currentObstacleIndex = 0;
+            gameState.clearedObstacles = [false, false, false, false, false];
+            gameState.status = "PLAYING";
+
+            // Bangun ulang dunia & karakter sesuai gender
+            buildRobloxCharacter(gameState.playerGender);
+            resetWorldObstacles();
+            resetPlayerPosition();
+
+            // Update HUD
+            updateHUD();
+            document.getElementById("screen-register").classList.add("hidden");
+            document.getElementById("hud-game").classList.remove("hidden");
+            playSound("correct");
+            showToast(`Selamat berpetualang, ${gameState.playerName}!`, "success");
+        }
+
+        function updateHUD() {
+            document.getElementById("hud-player-name").innerText = gameState.playerName;
+            document.getElementById("hud-player-gender").innerText = gameState.playerGender;
+            document.getElementById("hud-score").innerText = gameState.score;
+            const clearedCount = gameState.clearedObstacles.filter(Boolean).length;
+            document.getElementById("hud-stage").innerText = clearedCount;
+
+            const avatarEl = document.getElementById("hud-avatar");
+            if (gameState.playerGender === "Laki-laki") {
+                avatarEl.className = "w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 border-2 border-blue-400";
+                avatarEl.innerHTML = `<svg viewBox="0 0 64 64" class="w-9 h-9"><rect x="16" y="14" width="32" height="28" rx="6" fill="#FDBA74"/><rect x="14" y="10" width="36" height="8" rx="3" fill="#2563EB"/><circle cx="25" cy="27" r="2.5" fill="#0F172A"/><circle cx="39" cy="27" r="2.5" fill="#0F172A"/><path d="M27 34 Q32 38 37 34" stroke="#0F172A" stroke-width="2.5" fill="none"/><rect x="14" y="44" width="36" height="18" rx="5" fill="#2563EB"/></svg>`;
+            } else {
+                avatarEl.className = "w-11 h-11 rounded-xl bg-pink-100 flex items-center justify-center shrink-0 border-2 border-pink-400";
+                avatarEl.innerHTML = `<svg viewBox="0 0 64 64" class="w-9 h-9"><circle cx="13" cy="24" r="6" fill="#78350F"/><circle cx="51" cy="24" r="6" fill="#78350F"/><rect x="16" y="14" width="32" height="28" rx="6" fill="#FED7AA"/><circle cx="46" cy="15" r="4" fill="#EC4899"/><circle cx="25" cy="27" r="2.5" fill="#0F172A"/><circle cx="39" cy="27" r="2.5" fill="#0F172A"/><path d="M27 34 Q32 38 37 34" stroke="#0F172A" stroke-width="2.5" fill="none"/><rect x="14" y="44" width="36" height="18" rx="5" fill="#EC4899"/></svg>`;
+            }
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60).toString().padStart(2, "0");
+            const secs = (seconds % 60).toString().padStart(2, "0");
+            return `${mins}:${secs}`;
+        }
+
+        /* =========================================================================
+           4. MEKANISME PERTANYAAN & KONFIRMASI JAWABAN
+           ========================================================================= */
+        function triggerObstacleQuiz(index) {
+            if (gameState.clearedObstacles[index] || gameState.status !== "PLAYING") return;
+
+            gameState.status = "QUIZ";
+            gameState.currentObstacleIndex = index;
+            gameState.selectedOptionIndex = null;
+
+            // Hentikan pergerakan analog/keyboard
+            moveInput.x = 0;
+            moveInput.y = 0;
+
+            const obs = OBSTACLES_DATA[index];
+            document.getElementById("quiz-obstacle-icon").innerText = obs.icon;
+            document.getElementById("quiz-badge").innerText = `Rintangan ${obs.id} dari 5`;
+            document.getElementById("quiz-obstacle-title").innerText = obs.name;
+            document.getElementById("quiz-question-text").innerText = obs.question;
+
+            const optionsContainer = document.getElementById("quiz-options");
+            optionsContainer.innerHTML = "";
+
+            obs.options.forEach((opt, idx) => {
+                const btn = document.createElement("button");
+                btn.className = "btn-3d w-full text-left bg-slate-50 hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-400 rounded-2xl p-3.5 flex items-center gap-3 transition";
+                btn.innerHTML = `
+                    <span class="w-9 h-9 rounded-xl bg-blue-600 text-white font-game font-bold flex items-center justify-center shrink-0">${opt.label}</span>
+                    <span class="font-bold text-slate-800 text-sm sm:text-base">${opt.text}</span>
+                `;
+                btn.onclick = () => openAnswerConfirm(idx);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById("quiz-confirm-box").classList.add("hidden");
+            document.getElementById("modal-quiz").classList.remove("hidden");
+            playSound("popup");
+        }
+
+        function openAnswerConfirm(optionIdx) {
+            gameState.selectedOptionIndex = optionIdx;
+            const obs = OBSTACLES_DATA[gameState.currentObstacleIndex];
+            const chosen = obs.options[optionIdx];
+            document.getElementById("confirm-selected-answer").innerText = `${chosen.label}. ${chosen.text}`;
+            document.getElementById("quiz-confirm-box").classList.remove("hidden");
+        }
+
+        function cancelAnswerConfirm() {
+            gameState.selectedOptionIndex = null;
+            document.getElementById("quiz-confirm-box").classList.add("hidden");
+        }
+
+        function submitFinalAnswer() {
+            const idx = gameState.currentObstacleIndex;
+            const obs = OBSTACLES_DATA[idx];
+            const isCorrect = gameState.selectedOptionIndex === obs.correctIndex;
+
+            // Kunci rintangan agar tidak bisa diulangi
+            gameState.clearedObstacles[idx] = true;
+
+            if (isCorrect) {
+                gameState.score += 20;
+                gameState.correctCount += 1;
+                playSound("correct");
+                showToast(`Hebat! Jawaban Benar (+20 Poin)! Jalan terbuka!`, "success");
+            } else {
+                const correctOpt = obs.options[obs.correctIndex];
+                playSound("wrong");
+                showToast(`Kurang tepat! Jawaban benar: ${correctOpt.label}. ${correctOpt.text}`, "warning");
+            }
+
+            // Buka rintangan di dunia 3D agar pemain bisa lewat
+            clearObstacleIn3D(idx);
+
+            updateHUD();
+            document.getElementById("modal-quiz").classList.add("hidden");
+            gameState.status = "PLAYING";
+        }
+
+        /* =========================================================================
+           5. PENYELESAIAN GAME, APRESIASI & PAPAN PERINGKAT
+           ========================================================================= */
+        async function handleFinishGame() {
+            if (gameState.status === "FINISHED") return;
+            gameState.status = "FINISHED";
+
+            moveInput.x = 0;
+            moveInput.y = 0;
+            playSound("win");
+
+            const finalTimeSec = Math.max(1, Math.floor((Date.now() - gameState.startTime) / 1000));
+            gameState.elapsedSeconds = finalTimeSec;
+
+            // Tampilkan Apresiasi sesuai skor
+            let appreciation = "";
+            if (gameState.score === 100) {
+                appreciation = `Sempurna, ${gameState.playerName}! Kamu menjawab semua pertanyaan dengan tepat dan menjadi Juara Energi! 🌟`;
+            } else if (gameState.score >= 60) {
+                appreciation = `Hebat sekali, ${gameState.playerName}! Kamu berhasil menaklukkan seluruh rintangan petualangan! 👏`;
+            } else {
+                appreciation = `Terima kasih sudah berjuang sampai garis finis, ${gameState.playerName}! Terus semangat belajar ya! 💪`;
+            }
+
+            document.getElementById("finish-appreciation-msg").innerText = appreciation;
+            document.getElementById("finish-score").innerText = gameState.score;
+            document.getElementById("finish-correct-count").innerText = `${gameState.correctCount}/5 Jawaban Benar`;
+            document.getElementById("finish-time").innerText = formatTime(finalTimeSec);
+
+            document.getElementById("hud-game").classList.add("hidden");
+            document.getElementById("modal-finish").classList.remove("hidden");
+
+            // Simpan hasil ke database
+            const record = {
+                name: gameState.playerName,
+                gender: gameState.playerGender,
+                score: gameState.score,
+                timeSeconds: finalTimeSec,
+                date: new Date().toLocaleDateString("id-ID")
+            };
+            await savePlayerResultToDatabase(record);
+        }
+
+        function exitToMainMenu() {
+            document.getElementById("modal-finish").classList.add("hidden");
+            document.getElementById("hud-game").classList.add("hidden");
+            document.getElementById("screen-register").classList.remove("hidden");
+            document.getElementById("player-name").value = "";
+            gameState.status = "REGISTER";
+            resetPlayerPosition();
+        }
+
+        function openLeaderboard(highlightName = null) {
+            if (!highlightName) {
+                document.getElementById("already-played-banner").classList.add("hidden");
+            }
+            document.getElementById("modal-leaderboard").classList.remove("hidden");
+            renderLeaderboardTable(highlightName || gameState.playerName);
+            syncFromSpreadsheet();
+        }
+
+        function closeLeaderboard() {
+            document.getElementById("modal-leaderboard").classList.add("hidden");
+        }
+
+        function renderLeaderboardTable(highlightName = "") {
+            const records = getSortedLeaderboard(getLocalRecords());
+            const tbody = document.getElementById("leaderboard-body");
+            const emptyEl = document.getElementById("leaderboard-empty");
+            tbody.innerHTML = "";
+
+            if (records.length === 0) {
+                emptyEl.classList.remove("hidden");
+                return;
+            }
+            emptyEl.classList.add("hidden");
+
+            records.forEach((rec, index) => {
+                const rank = index + 1;
+                const isHighlighted = highlightName && rec.name.toLowerCase() === highlightName.toLowerCase();
+                let rankBadge = `<span class="w-7 h-7 rounded-full bg-slate-200 text-slate-700 inline-flex items-center justify-center text-xs font-extrabold">${rank}</span>`;
+                if (rank === 1) rankBadge = `<span class="text-xl">🥇</span>`;
+                else if (rank === 2) rankBadge = `<span class="text-xl">🥈</span>`;
+                else if (rank === 3) rankBadge = `<span class="text-xl">🥉</span>`;
+
+                const genderIcon = rec.gender === "Perempuan"
+                    ? `<span class="text-pink-500 text-xs ml-1"><i class="fas fa-venus"></i></span>`
+                    : `<span class="text-blue-500 text-xs ml-1"><i class="fas fa-mars"></i></span>`;
+
+                const tr = document.createElement("tr");
+                tr.className = isHighlighted ? "bg-amber-100/80" : "hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="py-3 px-2 text-center">${rankBadge}</td>
+                    <td class="py-3 px-3">
+                        <div class="font-bold text-slate-800">${escapeHtml(rec.name)} ${genderIcon}</div>
+                        ${isHighlighted ? '<span class="text-[10px] bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full font-extrabold">KAMU</span>' : ''}
+                    </td>
+                    <td class="py-3 px-2 text-center">
+                        <span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-xl font-extrabold">${rec.score}</span>
+                    </td>
+                    <td class="py-3 px-2 text-center font-mono text-slate-600">${formatTime(rec.timeSeconds)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        /* =========================================================================
+           6. PANEL ADMIN GURU (LOGIN: admin / @Salamah10)
+           ========================================================================= */
+        function openAdminLogin() {
+            document.getElementById("admin-username").value = "";
+            document.getElementById("admin-password").value = "";
+            document.getElementById("admin-login-error").classList.add("hidden");
+            document.getElementById("admin-login-view").classList.remove("hidden");
+            document.getElementById("admin-dashboard-view").classList.add("hidden");
+            document.getElementById("modal-admin").classList.remove("hidden");
+        }
+
+        function closeAdminModal() {
+            document.getElementById("modal-admin").classList.add("hidden");
+        }
+
+        function handleAdminLogin() {
+            const user = document.getElementById("admin-username").value.trim();
+            const pass = document.getElementById("admin-password").value;
+
+            if (user === "admin" && pass === "@Salamah10") {
+                document.getElementById("admin-login-view").classList.add("hidden");
+                document.getElementById("admin-dashboard-view").classList.remove("hidden");
+                document.getElementById("spreadsheet-url-input").value = localStorage.getItem(STORAGE_KEY_SHEET_URL) || "";
+                renderAdminTable();
+                syncFromSpreadsheet();
+                showToast("Berhasil masuk sebagai Admin Guru!", "success");
+            } else {
+                document.getElementById("admin-login-error").classList.remove("hidden");
+                playSound("wrong");
+            }
+        }
+
+        function renderAdminTable() {
+            const records = getSortedLeaderboard(getLocalRecords());
+            document.getElementById("admin-total-players").innerText = records.length;
+            const tbody = document.getElementById("admin-players-body");
+            tbody.innerHTML = "";
+
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">Belum ada data siswa.</td></tr>`;
+                return;
+            }
+
+            records.forEach((rec, idx) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="py-2.5 px-3">${idx + 1}</td>
+                    <td class="py-2.5 px-3 font-bold text-slate-800">${escapeHtml(rec.name)}</td>
+                    <td class="py-2.5 px-3 text-xs">${rec.gender}</td>
+                    <td class="py-2.5 px-3 text-center text-emerald-700 font-extrabold">${rec.score}</td>
+                    <td class="py-2.5 px-3 text-center font-mono text-xs">${formatTime(rec.timeSeconds)}</td>
+                    <td class="py-2.5 px-3 text-center">
+                        <button onclick="confirmDeletePlayer('${escapeHtml(rec.name).replace(/'/g, "\\'")}')"
+                            class="bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white px-2.5 py-1 rounded-lg text-xs font-bold transition">
+                            <i class="fas fa-trash"></i> Hapus
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function confirmDeletePlayer(name) {
+            gameState.pendingDeleteName = name;
+            document.getElementById("delete-target-name").innerText = name;
+            document.getElementById("modal-delete-confirm").classList.remove("hidden");
+        }
+
+        function closeDeleteConfirm() {
+            gameState.pendingDeleteName = null;
+            document.getElementById("modal-delete-confirm").classList.add("hidden");
+        }
+
+        async function executeDeletePlayer() {
+            const name = gameState.pendingDeleteName;
+            if (!name) return;
+
+            // Hapus dari LocalStorage
+            const records = getLocalRecords();
+            const updated = records.filter(r => r.name.toLowerCase() !== name.toLowerCase());
+            saveLocalRecords(updated);
+
+            // Hapus dari Google Spreadsheet jika terhubung
+            const sheetUrl = localStorage.getItem(STORAGE_KEY_SHEET_URL);
+            if (sheetUrl) {
+                try {
+                    await fetch(`${sheetUrl}?action=delete&name=${encodeURIComponent(name)}`);
+                } catch (e) {
+                    console.warn("Gagal menghapus di Spreadsheet:", e);
+                }
+            }
+
+            closeDeleteConfirm();
+            renderAdminTable();
+            renderLeaderboardTable();
+            showToast(`Data "${name}" berhasil dihapus!`, "success");
+        }
+
+        function saveSpreadsheetUrl() {
+            const url = document.getElementById("spreadsheet-url-input").value.trim();
+            localStorage.setItem(STORAGE_KEY_SHEET_URL, url);
+            showToast("URL Google Spreadsheet berhasil disimpan!", "success");
+            if (url) syncFromSpreadsheet();
+        }
+
+        function toggleScriptGuide() {
+            document.getElementById("apps-script-guide").classList.toggle("hidden");
+        }
+
+        function copyAppsScript() {
+            const codeText = document.getElementById("apps-script-code").innerText;
+            const textarea = document.createElement("textarea");
+            textarea.value = codeText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+            showToast("Kode Google Apps Script berhasil disalin!", "success");
+        }
+
+        function exportToCSV() {
+            const records = getSortedLeaderboard(getLocalRecords());
+            let csv = "Peringkat,Nama Siswa,Jenis Kelamin,Skor,Waktu (Detik),Format Waktu,Tanggal\n";
+            records.forEach((r, idx) => {
+                csv += `${idx + 1},"${r.name}","${r.gender}",${r.score},${r.timeSeconds},"${formatTime(r.timeSeconds)}","${r.date || ''}"\n`;
+            });
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Hasil_Petualangan_Energi_SD.csv";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        /* =========================================================================
+           7. DUNIA 3D ROBLOX / VOXEL OBBY DENGAN THREE.JS
+           ========================================================================= */
+        let scene, camera, renderer;
+        let playerMeshGroup, leftLeg, rightLeg, leftArm, rightArm;
+        let obstacleMeshes = [];
+        let animTime = 0;
+
+        // Fisika & Pergerakan Karakter
+        const playerPhysics = {
+            x: 0,
+            y: 0,
+            z: 4,
+            vy: 0,
+            isGrounded: true,
+            isSprinting: false,
+            rotationY: Math.PI
+        };
+
+        const moveInput = { x: 0, y: 0 };
+        const keysPressed = {};
+
+        function initThreeJS() {
+            const canvas = document.getElementById("game-canvas");
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x60a5fa);
+            scene.fog = new THREE.FogExp2(0x93c5fd, 0.011);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 300);
+            camera.position.set(0, 6, 12);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Pencahayaan Cerah ala Roblox
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.85);
+            dirLight.position.set(25, 45, 20);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            dirLight.shadow.camera.near = 5;
+            dirLight.shadow.camera.far = 220;
+            const d = 40;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = 20;
+            dirLight.shadow.camera.bottom = -180;
+            scene.add(dirLight);
+
+            buildEnvironment();
+            buildRobloxCharacter("Laki-laki");
+            buildAllObstacles();
+
+            window.addEventListener("resize", onWindowResize);
+            setupControls();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Membangun Lintasan Obby Roblox, Pepohonan Blok, Awan, dan Garis Finis
+        function buildEnvironment() {
+            const trackWidth = 10;
+            const startZ = 10;
+            const endZ = -175;
+            const holeZ = OBSTACLES_DATA[0].zPos; // Z = -28 (Lubang jalan pertama)
+
+            // Buat segmen lantai kotak-kotak (studs Roblox style)
+            const colors = [0x4ade80, 0x22c55e, 0x38bdf8, 0xfacc15];
+            let stepIdx = 0;
+            for (let z = startZ; z >= endZ; z -= 4) {
+                // Sisakan celah untuk Rintangan 1: Lubang Jalan di sekitar z = -28
+                if (Math.abs(z - holeZ) <= 2) continue;
+
+                const tileGeo = new THREE.BoxGeometry(trackWidth, 1.5, 4);
+                const tileMat = new THREE.MeshLambertMaterial({
+                    color: stepIdx % 2 === 0 ? 0x4ade80 : 0x22c55e
+                });
+                const tile = new THREE.Mesh(tileGeo, tileMat);
+                tile.position.set(0, -0.75, z);
+                tile.receiveShadow = true;
+                scene.add(tile);
+
+                // Pembatas pinggir jalan warna-warni (Obby border)
+                const borderColor = colors[stepIdx % colors.length];
+                const borderGeo = new THREE.BoxGeometry(0.5, 0.4, 4);
+                const borderMat = new THREE.MeshLambertMaterial({ color: borderColor });
+
+                const leftB = new THREE.Mesh(borderGeo, borderMat);
+                leftB.position.set(-trackWidth / 2 + 0.25, 0.2, z);
+                scene.add(leftB);
+
+                const rightB = new THREE.Mesh(borderGeo, borderMat);
+                rightB.position.set(trackWidth / 2 - 0.25, 0.2, z);
+                scene.add(rightB);
+
+                // Dekorasi Pohon Voxel & Awan di samping lintasan
+                if (stepIdx % 4 === 0) {
+                    createVoxelTree(-9 - (stepIdx % 3) * 2, z);
+                    createVoxelTree(9 + ((stepIdx + 1) % 3) * 2, z - 2);
+                }
+                if (stepIdx % 6 === 0) {
+                    createVoxelCloud((stepIdx % 2 === 0 ? -15 : 15), 14 + (stepIdx % 4), z);
+                }
+                stepIdx++;
+            }
+
+            // Gerbang Garis Finis (Z = FINISH_Z)
+            const pillarGeo = new THREE.BoxGeometry(0.8, 7, 0.8);
+            const pillarMat = new THREE.MeshLambertMaterial({ color: 0xf59e0b });
+            const leftPillar = new THREE.Mesh(pillarGeo, pillarMat);
+            leftPillar.position.set(-4.5, 3.5, FINISH_Z);
+            scene.add(leftPillar);
+
+            const rightPillar = new THREE.Mesh(pillarGeo, pillarMat);
+            rightPillar.position.set(4.5, 3.5, FINISH_Z);
+            scene.add(rightPillar);
+
+            const bannerGeo = new THREE.BoxGeometry(10, 1.8, 0.6);
+            const bannerMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+            const banner = new THREE.Mesh(bannerGeo, bannerMat);
+            banner.position.set(0, 6.5, FINISH_Z);
+            scene.add(banner);
+
+            // Karpet Finis Kotak Hitam Putih
+            for (let x = -4; x <= 4; x += 2) {
+                const finTile = new THREE.Mesh(
+                    new THREE.BoxGeometry(2, 0.1, 3),
+                    new THREE.MeshLambertMaterial({ color: (x / 2) % 2 === 0 ? 0xffffff : 0x1e293b })
+                );
+                finTile.position.set(x, 0.05, FINISH_Z);
+                scene.add(finTile);
+            }
+        }
+
+        function createVoxelTree(x, z) {
+            const treeGroup = new THREE.Group();
+            const trunk = new THREE.Mesh(
+                new THREE.BoxGeometry(1.2, 3.5, 1.2),
+                new THREE.MeshLambertMaterial({ color: 0x92400e })
+            );
+            trunk.position.y = 1.75;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            const leaves1 = new THREE.Mesh(
+                new THREE.BoxGeometry(3.6, 2.2, 3.6),
+                new THREE.MeshLambertMaterial({ color: 0x16a34a })
+            );
+            leaves1.position.y = 4.2;
+            leaves1.castShadow = true;
+            treeGroup.add(leaves1);
+
+            const leaves2 = new THREE.Mesh(
+                new THREE.BoxGeometry(2.4, 1.8, 2.4),
+                new THREE.MeshLambertMaterial({ color: 0x22c55e })
+            );
+            leaves2.position.y = 5.8;
+            treeGroup.add(leaves2);
+
+            treeGroup.position.set(x, -0.5, z);
+            scene.add(treeGroup);
+        }
+
+        function createVoxelCloud(x, y, z) {
+            const cloudGroup = new THREE.Group();
+            const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const b1 = new THREE.Mesh(new THREE.BoxGeometry(5, 1.5, 3), mat);
+            const b2 = new THREE.Mesh(new THREE.BoxGeometry(3, 1.8, 2.5), mat);
+            b2.position.set(0.5, 1, 0);
+            cloudGroup.add(b1, b2);
+            cloudGroup.position.set(x, y, z);
+            scene.add(cloudGroup);
+        }
+
+        // Membuat Karakter 3D Gaya Roblox (Laki-laki & Perempuan)
+        function buildRobloxCharacter(gender) {
+            if (playerMeshGroup) {
+                scene.remove(playerMeshGroup);
+            }
+            playerMeshGroup = new THREE.Group();
+
+            const isGirl = gender === "Perempuan";
+            const skinMat = new THREE.MeshLambertMaterial({ color: 0xfdba74 });
+            const shirtMat = new THREE.MeshLambertMaterial({ color: isGirl ? 0xec4899 : 0x2563eb });
+            const pantsMat = new THREE.MeshLambertMaterial({ color: isGirl ? 0x7c3aed : 0x1e293b });
+            const hairMat = new THREE.MeshLambertMaterial({ color: isGirl ? 0x78350f : 0x0f172a });
+
+            // Badan (Torso)
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.3, 0.65), shirtMat);
+            torso.position.y = 1.65;
+            torso.castShadow = true;
+            playerMeshGroup.add(torso);
+
+            // Kepala (Head)
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.95, 0.95), skinMat);
+            head.position.y = 2.85;
+            head.castShadow = true;
+            playerMeshGroup.add(head);
+
+            // Mata lucu
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.05), eyeMat);
+            leftEye.position.set(-0.2, 2.9, 0.48);
+            const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.05), eyeMat);
+            rightEye.position.set(0.2, 2.9, 0.48);
+            playerMeshGroup.add(leftEye, rightEye);
+
+            // Rambut / Topi / Kuncir sesuai Gender
+            if (isGirl) {
+                const hairTop = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.3, 1.02), hairMat);
+                hairTop.position.y = 3.35;
+                const bunLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.35), hairMat);
+                bunLeft.position.set(-0.62, 3.1, -0.1);
+                const bunRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.35), hairMat);
+                bunRight.position.set(0.62, 3.1, -0.1);
+                const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
+                ribbon.position.set(0.45, 3.45, 0.2);
+                playerMeshGroup.add(hairTop, bunLeft, bunRight, ribbon);
+            } else {
+                const cap = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.32, 1.02), new THREE.MeshLambertMaterial({ color: 0xef4444 }));
+                cap.position.y = 3.35;
+                const visor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.45), new THREE.MeshLambertMaterial({ color: 0xdc2626 }));
+                visor.position.set(0, 3.25, 0.55);
+                playerMeshGroup.add(cap, visor);
+            }
+
+            // Kaki Kiri & Kanan (dengan pivot di pinggul untuk animasi berjalan)
+            leftLeg = new THREE.Group();
+            leftLeg.position.set(-0.32, 1.0, 0);
+            const leftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.52, 1.0, 0.55), pantsMat);
+            leftLegMesh.position.y = -0.5;
+            leftLegMesh.castShadow = true;
+            leftLeg.add(leftLegMesh);
+
+            rightLeg = new THREE.Group();
+            rightLeg.position.set(0.32, 1.0, 0);
+            const rightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.52, 1.0, 0.55), pantsMat);
+            rightLegMesh.position.y = -0.5;
+            rightLegMesh.castShadow = true;
+            rightLeg.add(rightLegMesh);
+
+            // Tangan Kiri & Kanan
+            leftArm = new THREE.Group();
+            leftArm.position.set(-0.88, 2.2, 0);
+            const leftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.15, 0.5), skinMat);
+            leftArmMesh.position.y = -0.5;
+            leftArmMesh.castShadow = true;
+            leftArm.add(leftArmMesh);
+
+            rightArm = new THREE.Group();
+            rightArm.position.set(0.88, 2.2, 0);
+            const rightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.15, 0.5), skinMat);
+            rightArmMesh.position.y = -0.5;
+            rightArmMesh.castShadow = true;
+            rightArm.add(rightArmMesh);
+
+            playerMeshGroup.add(leftLeg, rightLeg, leftArm, rightArm);
+            playerMeshGroup.position.set(playerPhysics.x, playerPhysics.y, playerPhysics.z);
+            playerMeshGroup.rotation.y = playerPhysics.rotationY;
+            scene.add(playerMeshGroup);
+        }
+
+        // Membangun 5 Rintangan 3D yang Unik Sesuai Permintaan
+        function buildAllObstacles() {
+            obstacleMeshes.forEach(m => scene.remove(m.group));
+            obstacleMeshes = [];
+
+            OBSTACLES_DATA.forEach((obs, idx) => {
+                const group = new THREE.Group();
+                group.position.set(0, 0, obs.zPos);
+                let bridgeMesh = null;
+
+                if (obs.type === "hole") {
+                    // 1. Lubang Jalan: Tanda bahaya merah-kuning di tepi lubang + Jembatan tersembunyi
+                    const coneMat = new THREE.MeshLambertMaterial({ color: 0xf97316 });
+                    [-3.5, 3.5].forEach(x => {
+                        const cone = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.2, 4), coneMat);
+                        cone.position.set(x, 0.6, 2.8);
+                        group.add(cone);
+                    });
+                    // Jembatan yang akan muncul setelah pertanyaan dijawab
+                    bridgeMesh = new THREE.Mesh(
+                        new THREE.BoxGeometry(6, 0.4, 5.5),
+                        new THREE.MeshLambertMaterial({ color: 0xfbbf24 })
+                    );
+                    bridgeMesh.position.set(0, -0.2, 0);
+                    bridgeMesh.visible = false;
+                    group.add(bridgeMesh);
+                } else if (obs.type === "rock") {
+                    // 2. Batu Penghalang: Tumpukan batu besar menutup jalur
+                    const rockMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
+                    const rock1 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.4, 0), rockMat);
+                    rock1.position.set(-1.8, 1.8, 0);
+                    const rock2 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.6, 0), rockMat);
+                    rock2.position.set(1.8, 2.0, 0);
+                    const rock3 = new THREE.Mesh(new THREE.DodecahedronGeometry(1.9, 0), rockMat);
+                    rock3.position.set(0, 3.2, 0.3);
+                    group.add(rock1, rock2, rock3);
+                } else if (obs.type === "bakso") {
+                    // 3. Penjual Bakso: Gerobak bakso warna biru-kuning + panci + penjual
+                    const cart = new THREE.Mesh(
+                        new THREE.BoxGeometry(4.5, 2.2, 2.0),
+                        new THREE.MeshLambertMaterial({ color: 0x0284c7 })
+                    );
+                    cart.position.set(0, 1.3, 0);
+                    const roof = new THREE.Mesh(
+                        new THREE.BoxGeometry(5.0, 0.3, 2.4),
+                        new THREE.MeshLambertMaterial({ color: 0xfacc15 })
+                    );
+                    roof.position.set(0, 3.6, 0);
+                    const pot = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.6, 0.6, 0.8, 12),
+                        new THREE.MeshLambertMaterial({ color: 0xe2e8f0 })
+                    );
+                    pot.position.set(-1.2, 2.7, 0);
+                    // Karakter Penjual Bakso
+                    const vendorBody = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.4, 0.7), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+                    vendorBody.position.set(1.2, 2.8, -0.5);
+                    const vendorHead = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), new THREE.MeshLambertMaterial({ color: 0xfdba74 }));
+                    vendorHead.position.set(1.2, 3.9, -0.5);
+                    group.add(cart, roof, pot, vendorBody, vendorHead);
+                } else if (obs.type === "ghost") {
+                    // 4. Hantu: Hantu putih melayang dengan mata besar
+                    const ghostBody = new THREE.Mesh(
+                        new THREE.CylinderGeometry(1.4, 1.8, 3.2, 12),
+                        new THREE.MeshLambertMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.9 })
+                    );
+                    ghostBody.position.set(0, 2.4, 0);
+                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+                    const e1 = new THREE.Mesh(new THREE.SphereGeometry(0.28), eyeMat);
+                    e1.position.set(-0.5, 3.0, 1.3);
+                    const e2 = new THREE.Mesh(new THREE.SphereGeometry(0.28), eyeMat);
+                    e2.position.set(0.5, 3.0, 1.3);
+                    group.add(ghostBody, e1, e2);
+                } else if (obs.type === "monster") {
+                    // 5. Monster: Monster raksasa ungu-merah bertanduk
+                    const mBody = new THREE.Mesh(
+                        new THREE.BoxGeometry(4.2, 3.8, 2.4),
+                        new THREE.MeshLambertMaterial({ color: 0x7e22ce })
+                    );
+                    mBody.position.set(0, 2.2, 0);
+                    const hornMat = new THREE.MeshLambertMaterial({ color: 0xfacc15 });
+                    const h1 = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.5, 6), hornMat);
+                    h1.position.set(-1.5, 4.6, 0);
+                    const h2 = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.5, 6), hornMat);
+                    h2.position.set(1.5, 4.6, 0);
+                    const mEyeMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+                    const me1 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.2), mEyeMat);
+                    me1.position.set(-0.9, 3.1, 1.25);
+                    const me2 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.2), mEyeMat);
+                    me2.position.set(0.9, 3.1, 1.25);
+                    group.add(mBody, h1, h2, me1, me2);
+                }
+
+                scene.add(group);
+                obstacleMeshes.push({ group, bridgeMesh, type: obs.type });
+            });
+        }
+
+        function clearObstacleIn3D(index) {
+            const item = obstacleMeshes[index];
+            if (!item) return;
+            if (item.type === "hole" && item.bridgeMesh) {
+                item.bridgeMesh.visible = true;
+            } else {
+                // Geser / hilangkan rintangan dari jalur
+                item.group.visible = false;
+            }
+        }
+
+        function resetWorldObstacles() {
+            obstacleMeshes.forEach(item => {
+                item.group.visible = true;
+                if (item.bridgeMesh) item.bridgeMesh.visible = false;
+            });
+        }
+
+        function resetPlayerPosition() {
+            playerPhysics.x = 0;
+            playerPhysics.y = 0;
+            playerPhysics.z = 4;
+            playerPhysics.vy = 0;
+            playerPhysics.isGrounded = true;
+            playerPhysics.rotationY = Math.PI;
+            if (playerMeshGroup) {
+                playerMeshGroup.position.set(0, 0, 4);
+                playerMeshGroup.rotation.y = Math.PI;
+            }
+        }
+
+        function resetPlayerToSafeSpot() {
+            const clearedCount = gameState.clearedObstacles.filter(Boolean).length;
+            const safeZ = clearedCount === 0 ? 4 : OBSTACLES_DATA[clearedCount - 1].zPos - 4;
+            playerPhysics.x = 0;
+            playerPhysics.y = 0;
+            playerPhysics.z = safeZ;
+            playerPhysics.vy = 0;
+            showToast("Posisi karakter dikembalikan ke jalur aman!", "info");
+        }
+
+        /* =========================================================================
+           8. KONTROL ANALOG SENTUH & KEYBOARD (LAPTOP & SMARTPHONE)
+           ========================================================================= */
+        function setupControls() {
+            // Keyboard
+            window.addEventListener("keydown", (e) => {
+                keysPressed[e.code] = true;
+                if (e.code === "Space" && gameState.status === "PLAYING") {
+                    triggerJump();
+                }
+                if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
+                    setSprint(true);
+                }
+            });
+            window.addEventListener("keyup", (e) => {
+                keysPressed[e.code] = false;
+                if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
+                    setSprint(false);
+                }
+            });
+
+            // Analog Touch Joystick
+            const zone = document.getElementById("joystick-zone");
+            const knob = document.getElementById("joystick-knob");
+            const maxRadius = 38;
+            let activeTouchId = null;
+
+            function updateJoystick(clientX, clientY) {
+                const rect = zone.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                let dx = clientX - centerX;
+                let dy = clientY - centerY;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist > maxRadius) {
+                    dx = (dx / dist) * maxRadius;
+                    dy = (dy / dist) * maxRadius;
+                }
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                moveInput.x = dx / maxRadius;
+                moveInput.y = dy / maxRadius;
+            }
+
+            function resetJoystick() {
+                activeTouchId = null;
+                knob.style.transform = `translate(0px, 0px)`;
+                moveInput.x = 0;
+                moveInput.y = 0;
+            }
+
+            zone.addEventListener("pointerdown", (e) => {
+                activeTouchId = e.pointerId;
+                zone.setPointerCapture(e.pointerId);
+                updateJoystick(e.clientX, e.clientY);
+            });
+            zone.addEventListener("pointermove", (e) => {
+                if (e.pointerId === activeTouchId) {
+                    updateJoystick(e.clientX, e.clientY);
+                }
+            });
+            zone.addEventListener("pointerup", (e) => {
+                if (e.pointerId === activeTouchId) resetJoystick();
+            });
+            zone.addEventListener("pointercancel", resetJoystick);
+        }
+
+        function setSprint(active) {
+            playerPhysics.isSprinting = active;
+        }
+
+        function triggerJump() {
+            if (gameState.status !== "PLAYING") return;
+            if (playerPhysics.isGrounded) {
+                playerPhysics.vy = 0.28;
+                playerPhysics.isGrounded = false;
+                playSound("jump");
+            }
+        }
+
+        /* =========================================================================
+           9. GAME LOOP & ANIMASI 3D
+           ========================================================================= */
+        let lastTimerUpdate = 0;
+
+        function animate(timestamp) {
+            requestAnimationFrame(animate);
+            animTime += 0.05;
+
+            // Animasi Hantu melayang & Monster bergoyang
+            obstacleMeshes.forEach((item, i) => {
+                if (item.group.visible) {
+                    if (item.type === "ghost") {
+                        item.group.position.y = Math.sin(animTime * 1.5) * 0.4;
+                    } else if (item.type === "monster") {
+                        item.group.rotation.z = Math.sin(animTime) * 0.04;
+                    }
+                }
+            });
+
+            if (gameState.status === "PLAYING") {
+                // Update Timer setiap detik
+                if (timestamp - lastTimerUpdate > 500) {
+                    lastTimerUpdate = timestamp;
+                    const sec = Math.floor((Date.now() - gameState.startTime) / 1000);
+                    document.getElementById("hud-timer").innerText = formatTime(sec);
+                }
+
+                // Gabungkan input analog & keyboard
+                let ix = moveInput.x;
+                let iy = moveInput.y;
+                if (keysPressed["ArrowUp"] || keysPressed["KeyW"]) iy = -1;
+                if (keysPressed["ArrowDown"] || keysPressed["KeyS"]) iy = 1;
+                if (keysPressed["ArrowLeft"] || keysPressed["KeyA"]) ix = -1;
+                if (keysPressed["ArrowRight"] || keysPressed["KeyD"]) ix = 1;
+
+                const speed = playerPhysics.isSprinting ? 0.26 : 0.16;
+                const isMoving = Math.hypot(ix, iy) > 0.1;
+
+                if (isMoving) {
+                    const norm = Math.min(1, Math.hypot(ix, iy));
+                    const dirX = (ix / Math.hypot(ix, iy)) * norm;
+                    const dirZ = (iy / Math.hypot(ix, iy)) * norm;
+
+                    playerPhysics.x += dirX * speed;
+                    playerPhysics.z += dirZ * speed;
+
+                    // Batasi lebar jalan (-4.2 sampai 4.2) dan batas belakang (z <= 8)
+                    playerPhysics.x = Math.max(-4.2, Math.min(4.2, playerPhysics.x));
+                    playerPhysics.z = Math.min(8, playerPhysics.z);
+
+                    // Arahkan karakter menghadap arah gerak
+                    playerPhysics.rotationY = Math.atan2(dirX, dirZ);
+
+                    // Animasi ayunan tangan & kaki saat berjalan/berlari
+                    const swingSpeed = playerPhysics.isSprinting ? 4.5 : 2.8;
+                    const swingAngle = Math.sin(animTime * swingSpeed) * 0.75;
+                    leftLeg.rotation.x = swingAngle;
+                    rightLeg.rotation.x = -swingAngle;
+                    leftArm.rotation.x = -swingAngle;
+                    rightArm.rotation.x = swingAngle;
+                } else {
+                    // Kembali ke pose diam
+                    leftLeg.rotation.x *= 0.8;
+                    rightLeg.rotation.x *= 0.8;
+                    leftArm.rotation.x *= 0.8;
+                    rightArm.rotation.x *= 0.8;
+                }
+
+                // Fisika Lompat & Gravitasi
+                playerPhysics.y += playerPhysics.vy;
+                if (playerPhysics.y > 0) {
+                    playerPhysics.vy -= 0.015;
+                } else {
+                    playerPhysics.y = 0;
+                    playerPhysics.vy = 0;
+                    playerPhysics.isGrounded = true;
+                }
+
+                // Cek tabrakan / kedekatan dengan 5 Rintangan
+                for (let i = 0; i < OBSTACLES_DATA.length; i++) {
+                    if (!gameState.clearedObstacles[i]) {
+                        const obsZ = OBSTACLES_DATA[i].zPos;
+                        // Jika karakter mendekati rintangan (jarak <= 3.6 unit)
+                        if (playerPhysics.z <= obsZ + 3.6) {
+                            playerPhysics.z = obsZ + 3.7;
+                            triggerObstacleQuiz(i);
+                            break;
+                        }
+                    }
+                }
+
+                // Cek menyentuh Garis Finis
+                if (playerPhysics.z <= FINISH_Z + 1.0 && gameState.clearedObstacles.every(Boolean)) {
+                    handleFinishGame();
+                }
+
+                // Terapkan posisi ke Mesh 3D & Kamera mengikuti dengan halus
+                playerMeshGroup.position.set(playerPhysics.x, playerPhysics.y, playerPhysics.z);
+                playerMeshGroup.rotation.y = playerPhysics.rotationY;
+
+                camera.position.x += (playerPhysics.x * 0.6 - camera.position.x) * 0.1;
+                camera.position.y += (playerPhysics.y + 5.8 - camera.position.y) * 0.1;
+                camera.position.z += (playerPhysics.z + 9.5 - camera.position.z) * 0.12;
+                camera.lookAt(playerPhysics.x * 0.4, playerPhysics.y + 1.8, playerPhysics.z - 5);
+            } else if (gameState.status === "REGISTER") {
+                // Kamera berputar indah di layar awal
+                camera.position.x = Math.sin(animTime * 0.2) * 5;
+                camera.position.y = 6.5;
+                camera.position.z = 11;
+                camera.lookAt(0, 2, -10);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Jalankan saat halaman selesai dimuat
+        window.onload = function () {
+            initThreeJS();
+            syncFromSpreadsheet();
+            animate(0);
+        };
+    </script>
+</body>
+</html>
